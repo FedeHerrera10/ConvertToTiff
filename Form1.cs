@@ -16,11 +16,13 @@ namespace ConverToTif
     public partial class Form1 : Form
     {
         private string ruta_tif = ConfigurationManager.AppSettings.Get("ruta_tif");
+        private string path_result = "";
+        
         public Form1()
         {
             InitializeComponent();
         }
-
+        private int intCurrPage = 0;
         private void button1_Click(object sender, EventArgs e)
         {
             OpenFileDialog openFileDialog1 = new OpenFileDialog();
@@ -78,8 +80,7 @@ namespace ConverToTif
                 scannedImages = imagenes;
                 SaveMultipage(scannedImages, loc, "TIFF");
                 MessageBox.Show("Conversion con exito", "Exito..", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                txtDorso.Text = "";
-                txtFrontal.Text = "";
+               
 
             }
             catch (Exception ee)
@@ -175,17 +176,27 @@ namespace ConverToTif
         private void btnConvertir_Click(object sender, EventArgs e)
         {
             if (!verificar_path()) return;
+            merge_image();
+            this.toolStripStatusLabel1.Text = "Success";
+        }
+
+        private void merge_image()
+        {
             PictureBox pctb1 = new PictureBox();
-            pctb1.Image=Image.FromFile( txtFrontal.Text);
+            pctb1.Image = Image.FromFile(txtFrontal.Text);
             PictureBox pctb2 = new PictureBox();
             pctb2.Image = Image.FromFile(txtDorso.Text);
             Image[] arrayImages = new Image[2];
             arrayImages[0] = pctb1.Image;
             arrayImages[1] = pctb2.Image;
-            string path = ruta_tif + "\\image.tif";
-            DoExistingFileSave(arrayImages,path);
-        }
+            string path = ruta_tif +"\\"+ Path.GetRandomFileName().ToString()+".tif";
+            path_result = path;
+            DoExistingFileSave(arrayImages, path);
+            groupBox2.Visible = true;
+            intCurrPage = 0; // reseting the counter
+            RefreshImage(); // refreshing and showing the new file
 
+        }
         private bool verificar_path()
         {
             if (txtFrontal.Text.Trim().Equals(""))
@@ -198,7 +209,91 @@ namespace ConverToTif
                 errorProvider1.SetError(txtDorso, "El campo no puede ser blanco");
                 return false;
             }
+            
+            if(!File.Exists(txtDorso.Text))
+            {
+                errorProvider1.SetError(txtDorso, "La imagen no se encontro");
+                return false;
+            }
+
+            if (!File.Exists(txtFrontal.Text))
+            {
+                errorProvider1.SetError(txtDorso, "La imagen no se encontro");
+                return false;
+            }
+
             return true;
+        }
+
+        private void Form1_Load(object sender, EventArgs e)
+        {
+          
+        }
+
+        public void RefreshImage()
+        {
+            Image myImg; // setting the selected tiff
+            Image myBmp; // a new occurance of Image for viewing
+
+            myImg = System.Drawing.Image.FromFile(path_result); // setting the image from a file
+
+            int intPages = myImg.GetFrameCount(System.Drawing.Imaging.FrameDimension.Page); // getting the number of pages of this tiff
+            intPages--; // the first page is 0 so we must correct the number of pages to -1
+          // lblNumPages.Text = Convert.ToString(intPages); // showing the number of pages
+           // lblCurrPage.Text = Convert.ToString(intCurrPage); // showing the number of page on which we're on
+
+            myImg.SelectActiveFrame(System.Drawing.Imaging.FrameDimension.Page, intCurrPage); // going to the selected page
+
+            myBmp = new Bitmap(myImg, pictureBox1.Width, pictureBox1.Height); // setting the new page as an image
+            // Description on Bitmap(SOURCE, X,Y)
+
+            pictureBox1.Image = myBmp; // showing the page in the pictureBox1
+
+        }
+
+
+
+
+
+
+
+
+        private void toolStripLabel1_Click(object sender, EventArgs e)
+        {
+            FormSetting fSetting = new FormSetting();
+            fSetting.ShowDialog();
+        }
+
+        private void btnAtras_Click(object sender, EventArgs e)
+        {
+            if (intCurrPage == 0) // it stops here if you reached the bottom, the first page of the tiff
+            { intCurrPage = 0; }
+            else
+            {
+                intCurrPage--; // if its not the first page, then go to the previous page
+                RefreshImage(); // refresh the image on the selected page
+            }
+        }
+
+        private void btnSiguiente_Click(object sender, EventArgs e)
+        {
+            if (intCurrPage == 1) // if you have reached the last page it ends here
+                                                                  // the "-1" should be there for normalizing the number of pages
+            { intCurrPage = 1; }
+            else
+            {
+                intCurrPage++;
+                RefreshImage();
+            }
+        }
+
+        private void toolStripLabel2_Click(object sender, EventArgs e)
+        {
+            pictureBox1.Image = null;
+            txtDorso.Text = "";
+            txtFrontal.Text = "";
+            groupBox2.Visible = false;
+            
         }
     }
 }
